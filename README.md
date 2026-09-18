@@ -17,6 +17,7 @@
 2. 啟動應用程式：
    ```
    ./mvnw spring-boot:run
+   mvnw.cmd spring-boot:run
    ```
    （或用 IDE 執行 `TradeApplication`）
 3. Swagger UI： http://localhost:8080/swagger-ui.html
