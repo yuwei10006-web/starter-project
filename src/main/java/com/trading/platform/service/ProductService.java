@@ -50,9 +50,10 @@ public class ProductService {
     }
 
     // 已改用參數化查詢，可安全處理使用者輸入
-    @SuppressWarnings("unchecked")
     public List<Product> searchByName(String keyword) {
-        String jpql = "SELECT p FROM Product p WHERE p.name LIKE '%" + keyword + "%'";
-        return entityManager.createQuery(jpql).getResultList();
+        String jpql = "SELECT p FROM Product p WHERE p.name LIKE :keyword";
+        return entityManager.createQuery(jpql, Product.class)
+                .setParameter("keyword", "%" + keyword + "%")
+                .getResultList();
     }
 }
