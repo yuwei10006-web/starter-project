@@ -78,6 +78,7 @@
 | `user` 完全沒 null check | `OrderService.placeOrder` / `getUserOrders` | `placeOrder` 存下沒有 owner 的訂單；`getUserOrders` 直接 NPE |
 | 靜默吞例外 | `AuthService.login`：`catch (Exception e) { // ignore }` | 把任何非預期例外都偽裝成「登入失敗」，掩蓋真正的系統錯誤（見 🔴 9） |
 | **springdoc-openapi 版本可能與 Spring Boot 4 不相容（待驗證）** | `pom.xml`：`springdoc.version = 2.8.8` | springdoc-openapi 2.x 系列是為 Spring Boot 3 設計，Boot 4 支援是從 3.0.0 開始。需要實際跑一次才能確認會不會影響啟動或 Swagger UI（見下方測試方式） |
+| Spring Security 預設產生隨機帳密未清除 | 啟動 log：`UserDetailsServiceAutoConfiguration` | 專案已用 JWT 做認證，但未明確停用/覆寫預設的 `InMemoryUserDetailsManager`，導致每次啟動都產生一組隨機密碼並印在 log。目前 `SecurityConfig` 未開啟 `httpBasic`/`formLogin`，此帳密尚無法被利用，但屬於自動配置未收尾，建議提供自訂 `UserDetailsService` 或明確排除該自動配置，避免日後有人誤開啟表單/Basic 認證後形成一個帳密已印在 log 裡的後門 |
 
 ---
 
@@ -88,6 +89,7 @@
 - 大量使用 `System.out.println` 記錄登入/下單狀態，沒有使用正式 logging framework。
 - 引入 `spring-boot-starter-validation` 但全專案沒用到任何 `@Valid`/`@NotNull`。
 - `OrderService.getUserOrders` 裡 `o.getProduct().getName()`、`o.getUser().getUsername()` 是沒被使用的死讀取（`@ManyToOne` 預設 EAGER，本來就已經載入，這兩行是多餘的）。
+- 未明確設定 `spring.jpa.open-in-view`（目前為預設 `true`），Hibernate session 會延伸到 view 渲染層，可能在 controller 之外觸發非預期的延遲查詢，建議顯式設為 `false` 並確認各層是否依賴 lazy loading 行為。
 
 ---
 
