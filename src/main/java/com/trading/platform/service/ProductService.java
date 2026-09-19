@@ -23,17 +23,17 @@ public class ProductService {
 
     public Product createProduct(ProductRequest request) {
         Product p = new Product();
-        p.setName(request.getName());
-        p.setPrice(request.getPrice());
-        p.setStock(request.getStock());
+        p.setName(request.name());
+        p.setPrice(request.price());
+        p.setStock(request.stock());
         return productRepository.save(p);
     }
 
     public Product updateProduct(Long id, ProductRequest request) {
         Product p = productRepository.findById(id).get();
-        p.setName(request.getName());
-        p.setPrice(request.getPrice());
-        p.setStock(request.getStock());
+        p.setName(request.name());
+        p.setPrice(request.price());
+        p.setStock(request.stock());
         return productRepository.save(p);
     }
 
