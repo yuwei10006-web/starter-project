@@ -1,5 +1,6 @@
 package com.trading.platform.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -14,6 +15,7 @@ public class User {
 
     private String username;
 
+    @JsonIgnore
     private String password;
 
     private String role;
