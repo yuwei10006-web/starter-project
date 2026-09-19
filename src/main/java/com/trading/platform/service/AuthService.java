@@ -30,7 +30,7 @@ public class AuthService {
                     System.out.println("管理員登入: " + request.getUsername());
                 }
                 System.out.println("使用者登入成功: " + request.getUsername());
-                return jwtUtil.generateToken(user.getUsername());
+                return jwtUtil.generateToken(user.getUsername(), user.getRole());
             }
             System.out.println("登入失敗: " + request.getUsername());
         } catch (Exception e) {

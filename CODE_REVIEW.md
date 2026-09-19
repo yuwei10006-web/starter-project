@@ -79,6 +79,7 @@
 | 靜默吞例外 | `AuthService.login`：`catch (Exception e) { // ignore }` | 把任何非預期例外都偽裝成「登入失敗」，掩蓋真正的系統錯誤（見 🔴 9） |
 | **springdoc-openapi 版本可能與 Spring Boot 4 不相容（待驗證）** | `pom.xml`：`springdoc.version = 2.8.8` | springdoc-openapi 2.x 系列是為 Spring Boot 3 設計，Boot 4 支援是從 3.0.0 開始。需要實際跑一次才能確認會不會影響啟動或 Swagger UI（見下方測試方式） |
 | Spring Security 預設產生隨機帳密未清除 | 啟動 log：`UserDetailsServiceAutoConfiguration` | 專案已用 JWT 做認證，但未明確停用/覆寫預設的 `InMemoryUserDetailsManager`，導致每次啟動都產生一組隨機密碼並印在 log。目前 `SecurityConfig` 未開啟 `httpBasic`/`formLogin`，此帳密尚無法被利用，但屬於自動配置未收尾，建議提供自訂 `UserDetailsService` 或明確排除該自動配置，避免日後有人誤開啟表單/Basic 認證後形成一個帳密已印在 log 裡的後門 |
+| 未登入請求回傳 403 而非 401 | config/SecurityConfig.java | SecurityFilterChain 未設定 formLogin/httpBasic，也未自訂 AuthenticationEntryPoint，導致 Spring Security 找不到「如何要求重新認證」的機制，fallback 使用 Http403ForbiddenEntryPoint，未帶 token 的請求會回 403 而非語意正確的 401。建議在 exceptionHandling() 中自訂 authenticationEntryPoint，對未認證請求明確回傳 401 |
 
 ---
 
