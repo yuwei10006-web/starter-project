@@ -26,7 +26,7 @@ public class OrderService {
     private int placedOrderCount = 0;
 
     public OrderService(OrderRepository orderRepository, ProductRepository productRepository,
-                        UserRepository userRepository) {
+            UserRepository userRepository) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
@@ -36,6 +36,10 @@ public class OrderService {
     public Order placeOrder(String username, OrderRequest request) {
         User user = userRepository.findByUsername(username).orElse(null);
         Product product = productRepository.findById(request.getProductId()).orElse(null);
+
+        if (product == null) {
+            throw new RuntimeException("商品不存在");
+        }
 
         if (!validateOrder(request)) {
             throw new RuntimeException("訂單資料有誤");
