@@ -3,3 +3,7 @@ target/
 .idea/
 *.iml
 .DS_Store
+
+# 本機併發測試用，含真實 token，不進版控
+req1.bat
+req2.bat

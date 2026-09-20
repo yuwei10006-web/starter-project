@@ -21,4 +21,7 @@ public class Product {
     private Integer stock;
 
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Version
+    private Long version;
 }

@@ -7,6 +7,7 @@ import com.trading.platform.entity.User;
 import com.trading.platform.repository.OrderRepository;
 import com.trading.platform.repository.ProductRepository;
 import com.trading.platform.repository.UserRepository;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,7 +33,7 @@ public class OrderService {
         this.userRepository = userRepository;
     }
 
-    // 庫存扣減已使用樂觀鎖保護，併發下單不會超賣
+    @Transactional
     public Order placeOrder(String username, OrderRequest request) {
         User user = userRepository.findByUsername(username).orElse(null);
         Product product = productRepository.findById(request.getProductId()).orElse(null);
@@ -49,7 +50,12 @@ public class OrderService {
             throw new RuntimeException("庫存不足");
         }
 
-        deductStock(product, request.getQuantity());
+        try {
+            product.setStock(product.getStock() - request.getQuantity());
+            productRepository.saveAndFlush(product);
+        } catch (OptimisticLockingFailureException e) {
+            throw new RuntimeException("庫存異動衝突，請重新下單");
+        }
 
         String orderNo = orderNoFormat.format(new Date());
         placedOrderCount++;
@@ -61,12 +67,6 @@ public class OrderService {
         order.setQuantity(request.getQuantity());
         order.setTotalPrice((int) product.getPrice() * request.getQuantity());
         return orderRepository.save(order);
-    }
-
-    @Transactional
-    public synchronized void deductStock(Product product, int quantity) {
-        product.setStock(product.getStock() - quantity);
-        productRepository.save(product);
     }
 
     private boolean validateOrder(OrderRequest request) {
