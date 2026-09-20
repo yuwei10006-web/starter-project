@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS products (
 
 CREATE TABLE IF NOT EXISTS users (
     id          BIGSERIAL PRIMARY KEY,
-    username    VARCHAR(255),
+    username    VARCHAR(255) UNIQUE,
     password    VARCHAR(255),
     role        VARCHAR(50)
 );

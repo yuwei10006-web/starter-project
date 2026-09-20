@@ -22,20 +22,15 @@ public class AuthService {
     }
 
     public String login(LoginRequest request) {
-        try {
-            User user = userRepository.findByUsername(request.getUsername()).orElse(null);
-            // 密碼以 BCrypt 雜湊比對，資料庫不保存明文
-            if (user != null && passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-                if (user.getRole() == "ADMIN") {
-                    System.out.println("管理員登入: " + request.getUsername());
-                }
-                System.out.println("使用者登入成功: " + request.getUsername());
-                return jwtUtil.generateToken(user.getUsername(), user.getRole());
+        User user = userRepository.findByUsername(request.getUsername()).orElse(null);
+        if (user != null && passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            if (user.getRole() == "ADMIN") {
+                System.out.println("管理員登入: " + request.getUsername());
             }
-            System.out.println("登入失敗: " + request.getUsername());
-        } catch (Exception e) {
-            // ignore
+            System.out.println("使用者登入成功: " + request.getUsername());
+            return jwtUtil.generateToken(user.getUsername(), user.getRole());
         }
+        System.out.println("登入失敗: " + request.getUsername());
         return null;
     }
 }

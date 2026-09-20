@@ -45,7 +45,7 @@
 - **後果**：商品 ID 不存在時直接 NPE，回應裸 500。
 
 ### 9. 沒有唯一約束導致帳號重複，重啟後登入直接壞掉
-- **位置**：`resources/schema.sql`（`users` 表沒有 UNIQUE 約束）＋ `resources/data.sql`（`ON CONFLICT DO NOTHING`）＋ `service/AuthService.java`（`catch (Exception e) { // ignore }`）
+- **位置**：`entity/User.java`（username 欄位缺乏 unique 約束，實際建表由 Hibernate ddl-auto 依此定義產生）＋ `resources/data.sql`（`ON CONFLICT DO NOTHING`，缺乏對應 unique 約束時不生效）＋ `service/AuthService.java`（`catch (Exception e) { // ignore }`）
 - **問題**：`ON CONFLICT DO NOTHING` 要生效，資料表上必須有對應的 unique/exclusion constraint 讓資料庫判斷什麼叫「衝突」。這裡完全沒有，所以每次 `spring.sql.init.mode: always` 執行都會**再插入一筆**新的 admin/alice。重開機兩次後，`username = admin` 會有兩筆，`findByUsername` 期待單筆卻拿到多筆，Spring Data 丟 `IncorrectResultSizeDataAccessException`，又被 `AuthService.login` 的 `catch (Exception e) { // ignore }` 整個吞掉，只回傳 null。
 - **後果**：對使用者來說像是「帳密突然錯誤」，實際上是資料重複＋例外被靜默吞掉，非常難排查。
 
@@ -80,6 +80,7 @@
 | **springdoc-openapi 版本可能與 Spring Boot 4 不相容（待驗證）** | `pom.xml`：`springdoc.version = 2.8.8` | springdoc-openapi 2.x 系列是為 Spring Boot 3 設計，Boot 4 支援是從 3.0.0 開始。需要實際跑一次才能確認會不會影響啟動或 Swagger UI（見下方測試方式） |
 | Spring Security 預設產生隨機帳密未清除 | 啟動 log：`UserDetailsServiceAutoConfiguration` | 專案已用 JWT 做認證，但未明確停用/覆寫預設的 `InMemoryUserDetailsManager`，導致每次啟動都產生一組隨機密碼並印在 log。目前 `SecurityConfig` 未開啟 `httpBasic`/`formLogin`，此帳密尚無法被利用，但屬於自動配置未收尾，建議提供自訂 `UserDetailsService` 或明確排除該自動配置，避免日後有人誤開啟表單/Basic 認證後形成一個帳密已印在 log 裡的後門 |
 | 未登入請求回傳 403 而非 401 | config/SecurityConfig.java | SecurityFilterChain 未設定 formLogin/httpBasic，也未自訂 AuthenticationEntryPoint，導致 Spring Security 找不到「如何要求重新認證」的機制，fallback 使用 Http403ForbiddenEntryPoint，未帶 token 的請求會回 403 而非語意正確的 401。建議在 exceptionHandling() 中自訂 authenticationEntryPoint，對未認證請求明確回傳 401 |
+| `user` 完全沒 null check | `OrderService.placeOrder` / `getUserOrders` | `placeOrder` 透過登入後的 username 查詢 User，正常流程下通常能找到，但若資料庫中的 User 已被刪除或資料異常，`findByUsername(...).orElse(null)` 仍可能回傳 `null`；`placeOrder` 可能建立沒有有效 owner 的訂單，`getUserOrders` 則直接呼叫 `user.getId()` 導致 NPE。建議找不到 User 時明確拋出「使用者不存在」。 |
 
 ---
 
