@@ -1,6 +1,7 @@
 package com.trading.platform.controller;
 
 import com.trading.platform.dto.ProductRequest;
+import com.trading.platform.dto.ProductSearchResponse;
 import com.trading.platform.entity.Product;
 import com.trading.platform.service.ProductService;
 import org.springframework.web.bind.annotation.*;
@@ -43,8 +44,18 @@ public class ProductController {
         return productService.getProduct(id);
     }
 
+    /**
+     * 進階商品查詢。範例：
+     * GET /api/products/search?keyword=鍵盤&minPrice=1000&maxPrice=5000&sort=price,asc&page=0&size=20
+     */
     @GetMapping("/search")
-    public List<Product> search(@RequestParam String keyword) {
-        return productService.searchByName(keyword);
+    public ProductSearchResponse search(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice,
+            @RequestParam(defaultValue = "createdAt,desc") String sort,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return productService.searchProducts(keyword, minPrice, maxPrice, sort, page, size);
     }
 }
