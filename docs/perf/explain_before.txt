@@ -1,0 +1,119 @@
+===== Q1 rare keyword (about 1 match), sort by createdAt desc =====
+                                                              QUERY PLAN                                                               
+---------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=18098.57..18101.02 rows=21 width=61) (actual time=140.626..144.787 rows=1 loops=1)
+   Buffers: shared hit=12015
+   ->  Gather Merge  (cost=18098.57..18108.37 rows=84 width=61) (actual time=140.623..144.782 rows=1 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         Buffers: shared hit=12015
+         ->  Sort  (cost=17098.54..17098.65 rows=42 width=61) (actual time=136.239..136.240 rows=0 loops=3)
+               Sort Key: created_at DESC, id DESC
+               Sort Method: quicksort  Memory: 25kB
+               Buffers: shared hit=12015
+               Worker 0:  Sort Method: quicksort  Memory: 25kB
+               Worker 1:  Sort Method: quicksort  Memory: 25kB
+               ->  Parallel Seq Scan on products  (cost=0.00..17097.41 rows=42 width=61) (actual time=127.899..136.132 rows=0 loops=3)
+                     Filter: ((name)::text ~~* '%777777%'::text)
+                     Rows Removed by Filter: 333338
+                     Buffers: shared hit=11889
+ Planning:
+   Buffers: shared hit=88
+ Planning Time: 0.719 ms
+ Execution Time: 144.851 ms
+(20 rows)
+
+===== Q2 2-char Chinese keyword (about 10% match), sort by price =====
+                                                                 QUERY PLAN                                                                 
+--------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=19118.71..19121.16 rows=21 width=61) (actual time=113.737..117.522 rows=21 loops=1)
+   Buffers: shared hit=12019
+   ->  Gather Merge  (cost=19118.71..27957.76 rows=75758 width=61) (actual time=113.734..117.515 rows=21 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         Buffers: shared hit=12019
+         ->  Sort  (cost=18118.69..18213.39 rows=37879 width=61) (actual time=110.892..110.899 rows=17 loops=3)
+               Sort Key: price, id
+               Sort Method: top-N heapsort  Memory: 29kB
+               Buffers: shared hit=12019
+               Worker 0:  Sort Method: top-N heapsort  Memory: 29kB
+               Worker 1:  Sort Method: top-N heapsort  Memory: 29kB
+               ->  Parallel Seq Scan on products  (cost=0.00..17097.41 rows=37879 width=61) (actual time=0.062..108.886 rows=33326 loops=3)
+                     Filter: ((name)::text ~~* '%鍵盤%'::text)
+                     Rows Removed by Filter: 300012
+                     Buffers: shared hit=11889
+ Planning:
+   Buffers: shared hit=16
+ Planning Time: 0.246 ms
+ Execution Time: 117.623 ms
+(20 rows)
+
+===== Q3 4-char Chinese keyword (about 1% match) + price range =====
+                                                                     QUERY PLAN                                                                      
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=20189.94..20192.39 rows=21 width=61) (actual time=162.971..167.259 rows=21 loops=1)
+   Buffers: shared hit=12019
+   ->  Gather Merge  (cost=20189.94..20269.05 rows=678 width=61) (actual time=162.968..167.249 rows=21 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         Buffers: shared hit=12019
+         ->  Sort  (cost=19189.92..19190.76 rows=339 width=61) (actual time=160.593..160.597 rows=17 loops=3)
+               Sort Key: price, id
+               Sort Method: top-N heapsort  Memory: 29kB
+               Buffers: shared hit=12019
+               Worker 0:  Sort Method: top-N heapsort  Memory: 29kB
+               Worker 1:  Sort Method: top-N heapsort  Memory: 30kB
+               ->  Parallel Seq Scan on products  (cost=0.00..19180.78 rows=339 width=61) (actual time=0.082..160.426 rows=279 loops=3)
+                     Filter: (((name)::text ~~* '%機械鍵盤%'::text) AND (price >= '1000'::double precision) AND (price <= '5000'::double precision))
+                     Rows Removed by Filter: 333059
+                     Buffers: shared hit=11889
+ Planning:
+   Buffers: shared hit=6
+ Planning Time: 0.183 ms
+ Execution Time: 167.289 ms
+(20 rows)
+
+===== Q4 price range only, sort by price =====
+                                                              QUERY PLAN                                                               
+---------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=19160.71..19163.16 rows=21 width=61) (actual time=28.735..33.897 rows=21 loops=1)
+   Buffers: shared hit=12019
+   ->  Gather Merge  (cost=19160.71..19347.63 rows=1602 width=61) (actual time=28.731..33.887 rows=21 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         Buffers: shared hit=12019
+         ->  Sort  (cost=18160.69..18162.69 rows=801 width=61) (actual time=24.939..24.942 rows=17 loops=3)
+               Sort Key: price, id
+               Sort Method: top-N heapsort  Memory: 30kB
+               Buffers: shared hit=12019
+               Worker 0:  Sort Method: top-N heapsort  Memory: 30kB
+               Worker 1:  Sort Method: top-N heapsort  Memory: 29kB
+               ->  Parallel Seq Scan on products  (cost=0.00..18139.09 rows=801 width=61) (actual time=0.059..24.695 rows=668 loops=3)
+                     Filter: ((price >= '100'::double precision) AND (price <= '200'::double precision))
+                     Rows Removed by Filter: 332670
+                     Buffers: shared hit=11889
+ Planning Time: 0.136 ms
+ Execution Time: 33.963 ms
+(18 rows)
+
+===== Q5 no filter, default sort (newest first) =====
+                                                                 QUERY PLAN                                                                  
+---------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=28289.92..28292.37 rows=21 width=61) (actual time=57.086..60.210 rows=21 loops=1)
+   Buffers: shared hit=12015
+   ->  Gather Merge  (cost=28289.92..125520.41 rows=833346 width=61) (actual time=57.082..60.202 rows=21 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         Buffers: shared hit=12015
+         ->  Sort  (cost=27289.89..28331.58 rows=416673 width=61) (actual time=54.025..54.028 rows=20 loops=3)
+               Sort Key: created_at DESC, id DESC
+               Sort Method: top-N heapsort  Memory: 28kB
+               Buffers: shared hit=12015
+               Worker 0:  Sort Method: top-N heapsort  Memory: 29kB
+               Worker 1:  Sort Method: top-N heapsort  Memory: 30kB
+               ->  Parallel Seq Scan on products  (cost=0.00..16055.73 rows=416673 width=61) (actual time=0.010..26.390 rows=333338 loops=3)
+                     Buffers: shared hit=11889
+ Planning Time: 0.115 ms
+ Execution Time: 60.244 ms
+(16 rows)
+

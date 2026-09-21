@@ -1,0 +1,40 @@
+===== Q8 2-char Chinese, NO match, sort by price =====
+                                                                          QUERY PLAN                                                                           
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=1000.45..16365.65 rows=21 width=61) (actual time=487.404..493.498 rows=0 loops=1)
+   Buffers: shared hit=999903 read=3860
+   ->  Gather Merge  (cost=1000.45..74168.06 rows=100 width=61) (actual time=487.401..493.493 rows=0 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         Buffers: shared hit=999903 read=3860
+         ->  Parallel Index Scan using idx_products_price_id on products  (cost=0.42..73156.49 rows=42 width=61) (actual time=484.192..484.194 rows=0 loops=3)
+               Filter: ((name)::text ~~* '%鍵鍵%'::text)
+               Rows Removed by Filter: 333338
+               Buffers: shared hit=999903 read=3860
+ Planning:
+   Buffers: shared hit=170
+ Planning Time: 0.976 ms
+ Execution Time: 493.556 ms
+(14 rows)
+
+===== Q9 3-char Chinese, NO match, sort by price =====
+                                                                  QUERY PLAN                                                                  
+----------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=398.01..398.07 rows=21 width=61) (actual time=0.078..0.079 rows=0 loops=1)
+   Buffers: shared hit=3
+   ->  Sort  (cost=398.01..398.26 rows=100 width=61) (actual time=0.075..0.076 rows=0 loops=1)
+         Sort Key: price, id
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=3
+         ->  Bitmap Heap Scan on products  (cost=21.58..395.32 rows=100 width=61) (actual time=0.032..0.033 rows=0 loops=1)
+               Recheck Cond: ((name)::text ~~* '%鍵鍵鍵%'::text)
+               Buffers: shared hit=3
+               ->  Bitmap Index Scan on idx_products_name_trgm  (cost=0.00..21.56 rows=100 width=0) (actual time=0.029..0.030 rows=0 loops=1)
+                     Index Cond: ((name)::text ~~* '%鍵鍵鍵%'::text)
+                     Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=1
+ Planning Time: 0.282 ms
+ Execution Time: 0.200 ms
+(16 rows)
+

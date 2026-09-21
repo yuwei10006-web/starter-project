@@ -1,0 +1,77 @@
+===== Q1b rare keyword (exactly 1 match), sort by createdAt desc =====
+                                                                  QUERY PLAN                                                                  
+----------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=457.06..457.11 rows=21 width=61) (actual time=0.558..0.559 rows=1 loops=1)
+   Buffers: shared hit=20
+   ->  Sort  (cost=457.06..457.31 rows=100 width=61) (actual time=0.556..0.557 rows=1 loops=1)
+         Sort Key: created_at DESC, id DESC
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=20
+         ->  Bitmap Heap Scan on products  (cost=80.63..454.37 rows=100 width=61) (actual time=0.505..0.505 rows=1 loops=1)
+               Recheck Cond: ((name)::text ~~* '%583921%'::text)
+               Heap Blocks: exact=1
+               Buffers: shared hit=14
+               ->  Bitmap Index Scan on idx_products_name_trgm  (cost=0.00..80.61 rows=100 width=0) (actual time=0.400..0.401 rows=1 loops=1)
+                     Index Cond: ((name)::text ~~* '%583921%'::text)
+                     Buffers: shared hit=13
+ Planning:
+   Buffers: shared hit=168
+ Planning Time: 1.025 ms
+ Execution Time: 0.642 ms
+(17 rows)
+
+===== Q6 rare keyword (exactly 1 match), sort by price =====
+                                                                  QUERY PLAN                                                                  
+----------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=457.06..457.11 rows=21 width=61) (actual time=0.675..0.677 rows=1 loops=1)
+   Buffers: shared hit=17
+   ->  Sort  (cost=457.06..457.31 rows=100 width=61) (actual time=0.675..0.675 rows=1 loops=1)
+         Sort Key: price, id
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=17
+         ->  Bitmap Heap Scan on products  (cost=80.63..454.37 rows=100 width=61) (actual time=0.664..0.665 rows=1 loops=1)
+               Recheck Cond: ((name)::text ~~* '%583921%'::text)
+               Heap Blocks: exact=1
+               Buffers: shared hit=14
+               ->  Bitmap Index Scan on idx_products_name_trgm  (cost=0.00..80.61 rows=100 width=0) (actual time=0.657..0.657 rows=1 loops=1)
+                     Index Cond: ((name)::text ~~* '%583921%'::text)
+                     Buffers: shared hit=13
+ Planning:
+   Buffers: shared hit=11
+ Planning Time: 0.233 ms
+ Execution Time: 0.714 ms
+(17 rows)
+
+===== Q7 diagnostic: 2-char Chinese keyword, force GIN =====
+SET
+SET
+                                                                            QUERY PLAN                                                                             
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=43298.05..43300.50 rows=21 width=61) (actual time=406.420..411.164 rows=21 loops=1)
+   Buffers: shared hit=14543 read=1469
+   ->  Gather Merge  (cost=43298.05..52137.10 rows=75758 width=61) (actual time=406.418..411.159 rows=21 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         Buffers: shared hit=14543 read=1469
+         ->  Sort  (cost=42298.02..42392.72 rows=37879 width=61) (actual time=376.735..376.739 rows=18 loops=3)
+               Sort Key: price, id
+               Sort Method: top-N heapsort  Memory: 29kB
+               Buffers: shared hit=14543 read=1469
+               Worker 0:  Sort Method: top-N heapsort  Memory: 30kB
+               Worker 1:  Sort Method: top-N heapsort  Memory: 29kB
+               ->  Parallel Bitmap Heap Scan on products  (cost=28914.26..41276.75 rows=37879 width=61) (actual time=194.720..374.410 rows=33326 loops=3)
+                     Recheck Cond: ((name)::text ~~* '%鍵盤%'::text)
+                     Rows Removed by Index Recheck: 300012
+                     Heap Blocks: exact=4191
+                     Buffers: shared hit=14511 read=1469
+                     ->  Bitmap Index Scan on idx_products_name_trgm  (cost=0.00..28891.53 rows=90910 width=0) (actual time=211.794..211.795 rows=1000015 loops=1)
+                           Index Cond: ((name)::text ~~* '%鍵盤%'::text)
+                           Buffers: shared hit=4091
+ Planning:
+   Buffers: shared hit=1
+ Planning Time: 0.097 ms
+ Execution Time: 411.275 ms
+(24 rows)
+
+RESET
+RESET

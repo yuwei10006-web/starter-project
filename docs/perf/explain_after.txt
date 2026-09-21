@@ -1,0 +1,79 @@
+===== Q1 rare keyword (about 1 match), sort by createdAt desc =====
+                                                                   QUERY PLAN                                                                    
+-------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=398.01..398.07 rows=21 width=61) (actual time=37.350..37.353 rows=1 loops=1)
+   Buffers: shared hit=882 read=162
+   ->  Sort  (cost=398.01..398.26 rows=100 width=61) (actual time=37.346..37.347 rows=1 loops=1)
+         Sort Key: created_at DESC, id DESC
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=882 read=162
+         ->  Bitmap Heap Scan on products  (cost=21.58..395.32 rows=100 width=61) (actual time=36.255..37.272 rows=1 loops=1)
+               Recheck Cond: ((name)::text ~~* '%777777%'::text)
+               Rows Removed by Index Recheck: 3699
+               Heap Blocks: exact=1034
+               Buffers: shared hit=876 read=162
+               ->  Bitmap Index Scan on idx_products_name_trgm  (cost=0.00..21.56 rows=100 width=0) (actual time=0.404..0.404 rows=3700 loops=1)
+                     Index Cond: ((name)::text ~~* '%777777%'::text)
+                     Buffers: shared hit=4
+ Planning:
+   Buffers: shared hit=162 read=12 dirtied=3
+ Planning Time: 6.607 ms
+ Execution Time: 38.334 ms
+(18 rows)
+
+===== Q2 2-char Chinese keyword (about 10% match), sort by price =====
+                                                                   QUERY PLAN                                                                    
+-------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.42..19.01 rows=21 width=61) (actual time=2.579..12.232 rows=21 loops=1)
+   Buffers: shared hit=205 read=47
+   ->  Index Scan using idx_products_price_id on products  (cost=0.42..80448.27 rows=90910 width=61) (actual time=2.578..12.225 rows=21 loops=1)
+         Filter: ((name)::text ~~* '%鍵盤%'::text)
+         Rows Removed by Filter: 228
+         Buffers: shared hit=205 read=47
+ Planning:
+   Buffers: shared hit=11
+ Planning Time: 0.188 ms
+ Execution Time: 12.250 ms
+(10 rows)
+
+===== Q3 4-char Chinese keyword (about 1% match) + price range =====
+                                                                  QUERY PLAN                                                                   
+-----------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.42..1278.16 rows=21 width=61) (actual time=2.791..42.934 rows=21 loops=1)
+   Buffers: shared hit=1307 read=191
+   ->  Index Scan using idx_products_price_id on products  (cost=0.42..50683.79 rows=833 width=61) (actual time=2.790..42.923 rows=21 loops=1)
+         Index Cond: ((price >= '1000'::double precision) AND (price <= '5000'::double precision))
+         Filter: ((name)::text ~~* '%機械鍵盤%'::text)
+         Rows Removed by Filter: 1470
+         Buffers: shared hit=1307 read=191
+ Planning:
+   Buffers: shared hit=7
+ Planning Time: 0.259 ms
+ Execution Time: 42.957 ms
+(11 rows)
+
+===== Q4 price range only, sort by price =====
+                                                                  QUERY PLAN                                                                  
+----------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.42..78.90 rows=21 width=61) (actual time=0.029..0.811 rows=21 loops=1)
+   Buffers: shared hit=21 read=3
+   ->  Index Scan using idx_products_price_id on products  (cost=0.42..7239.08 rows=1937 width=61) (actual time=0.028..0.807 rows=21 loops=1)
+         Index Cond: ((price >= '100'::double precision) AND (price <= '200'::double precision))
+         Buffers: shared hit=21 read=3
+ Planning:
+   Buffers: shared hit=8
+ Planning Time: 0.185 ms
+ Execution Time: 0.823 ms
+(9 rows)
+
+===== Q5 no filter, default sort (newest first) =====
+                                                                      QUERY PLAN                                                                       
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.42..2.06 rows=21 width=61) (actual time=1.316..1.331 rows=21 loops=1)
+   Buffers: shared hit=6 read=4
+   ->  Index Scan using idx_products_created_at_id on products  (cost=0.42..77968.03 rows=1000015 width=61) (actual time=1.315..1.329 rows=21 loops=1)
+         Buffers: shared hit=6 read=4
+ Planning Time: 0.090 ms
+ Execution Time: 1.338 ms
+(6 rows)
+
