@@ -35,7 +35,7 @@
 
 ## 主要 API
 - `POST /api/auth/login` 登入，回傳 JWT
-- `GET/POST/PUT /api/products`、`GET /api/products/delete/{id}` 商品
+- `GET/POST/PUT /api/products`、`DELETE /api/products/{id}` 商品
 - `GET /api/products/search` 商品進階查詢（關鍵字模糊搜尋、價格區間、排序、分頁，詳見下方）
 - `POST /api/orders`、`GET /api/orders` 下單與查詢
 

@@ -296,7 +296,7 @@ ApplicationContext 初始化 `SecurityConfig` 這個 bean 時，Spring 找不到
 
 `fix: AuthService 角色比較改用 equals，避免字串 == 比較不可靠（對應 Code Review 中等 #字串用 == 比較角色）`
 
-## `Long` 用 `==` 比較
+## 14. `Long` 用 `==` 比較
 
 **嚴重度：🟡**
 **檔案位置：** `service/OrderService.java`，`getUserOrders()`
@@ -312,4 +312,22 @@ ApplicationContext 初始化 `SecurityConfig` 這個 bean 時，Spring 找不到
 
 **對應 commit：**
 `fix: OrderService.getUserOrders 移除多餘且不可靠的 Long == 比較（對應 Code Review 中等 #Long用==比較）`
+
+## 15. 用 GET 做刪除
+
+**嚴重度：🟡**
+**檔案位置：** `controller/ProductController.java`、`config/SecurityConfig.java`
+
+**問題描述：**
+`ProductController` 用 `@GetMapping("/delete/{id}")` 實作刪除商品，違反 HTTP 語意——GET 應該是安全、無副作用的操作。這種寫法容易被瀏覽器預抓取（prefetch）、爬蟲、或惡意頁面內嵌的 `<img src="...">` 之類的請求誤觸發，在使用者完全不知情的情況下觸發刪除。
+
+**修法：**
+`ProductController` 改用 `@DeleteMapping("/{id}")`，符合 REST 語意，路徑也從 `/api/products/delete/{id}` 簡化為標準的 `DELETE /api/products/{id}`（與既有的 `GET /api/products/{id}` 同一路徑、不同方法，不會衝突）。`SecurityConfig` 原本有一條專門比對 `/api/products/delete/**` 的 ADMIN 限制規則，路徑改變後這條規則不會再匹配到任何請求，形同失效，需同步改成用 `HttpMethod.DELETE` 比對。
+
+**驗證：**
+以 admin token 呼叫 `DELETE /api/products/{id}`，確認回傳 200 且商品被刪除、清單中該筆消失。以 admin token 呼叫舊的 `GET /api/products/delete/{id}`，確認回傳 404，證實舊路徑已不存在。以 alice（USER）token 呼叫 `DELETE /api/products/{id}`，確認回傳 403，證實權限規則改成比對 `HttpMethod.DELETE` 後 ADMIN 限制依然生效，沒有因路徑改變而被繞過。
+
+**對應 commit：**
+
+`fix: ProductController 刪除商品改用 DELETE method，避免違反 HTTP 語意（對應 Code Review 中等 #用GET做刪除）`
 

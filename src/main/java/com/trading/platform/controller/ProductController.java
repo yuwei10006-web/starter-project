@@ -28,7 +28,7 @@ public class ProductController {
         return productService.updateProduct(id, request);
     }
 
-    @GetMapping("/delete/{id}")
+    @DeleteMapping("/{id}")
     public String delete(@PathVariable Long id) {
         productService.deleteProduct(id);
         return "deleted";
@@ -46,7 +46,8 @@ public class ProductController {
 
     /**
      * 進階商品查詢。範例：
-     * GET /api/products/search?keyword=鍵盤&minPrice=1000&maxPrice=5000&sort=price,asc&page=0&size=20
+     * GET
+     * /api/products/search?keyword=鍵盤&minPrice=1000&maxPrice=5000&sort=price,asc&page=0&size=20
      */
     @GetMapping("/search")
     public ProductSearchResponse search(
