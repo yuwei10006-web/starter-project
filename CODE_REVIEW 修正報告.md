@@ -296,3 +296,20 @@ ApplicationContext 初始化 `SecurityConfig` 這個 bean 時，Spring 找不到
 
 `fix: AuthService 角色比較改用 equals，避免字串 == 比較不可靠（對應 Code Review 中等 #字串用 == 比較角色）`
 
+## `Long` 用 `==` 比較
+
+**嚴重度：🟡**
+**檔案位置：** `service/OrderService.java`，`getUserOrders()`
+
+**問題描述：**
+`getUserOrders()` 用 `o.getUser().getId() == user.getId()` 比較兩個 `Long`，`==` 比的是物件參考，只有在數值落於 Java `Long` cache 範圍（-128~127）內才會恰好比對正確，超出範圍時比較結果不可靠。此外這個過濾本身是多餘的：`orderRepository.findByUserId(user.getId())` 查詢時已經用 `userId` 篩過一次，迴圈內再比對一次不會改變任何結果。
+
+**修法：**
+移除迴圈內的 `==` 比較與整段重複過濾邏輯，`getUserOrders()` 直接回傳 `orderRepository.findByUserId(user.getId())` 的結果。原本迴圈裡 `o.getProduct().getName()`、`o.getUser().getUsername()` 兩行沒有使用回傳值的死讀取，一併移除。
+
+**驗證：**
+目前測試資料的使用者 ID（1、2、3…）恰好落在 `Long` cache 範圍內，`==` 在這個資料規模下不會真的重現錯誤結果，因此無法比照「修正前重現 bug、修正後修正」的方式驗證，本項屬於預防性修正。改以確認行為一致性驗證：以 `mvnw.cmd clean compile` 確認編譯無誤（含移除多餘的 `ArrayList` import）；分別以 alice、admin 登入呼叫 `GET /api/orders`，alice 回傳其名下 1 筆訂單（含 4K 螢幕商品），admin 回傳空陣列，確認過濾邏輯實際由 SQL 層的 `findByUserId` 負責、拿掉的 Java 迴圈確實無副作用，且未出現撈到他人訂單的情況。
+
+**對應 commit：**
+`fix: OrderService.getUserOrders 移除多餘且不可靠的 Long == 比較（對應 Code Review 中等 #Long用==比較）`
+

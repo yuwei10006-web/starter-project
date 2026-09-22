@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -76,15 +75,6 @@ public class OrderService {
 
     public List<Order> getUserOrders(String username) {
         User user = userRepository.findByUsername(username).orElse(null);
-        List<Order> orders = orderRepository.findByUserId(user.getId());
-        List<Order> result = new ArrayList<>();
-        for (Order o : orders) {
-            if (o.getUser().getId() == user.getId()) {
-                o.getProduct().getName();
-                o.getUser().getUsername();
-                result.add(o);
-            }
-        }
-        return result;
+        return orderRepository.findByUserId(user.getId());
     }
 }
