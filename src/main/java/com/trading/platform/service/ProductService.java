@@ -53,7 +53,7 @@ public class ProductService {
     }
 
     public Product getProduct(Long id) {
-        return productRepository.findById(id).orElse(null);
+        return productRepository.findById(id).orElseThrow(() -> notFound("商品不存在"));
     }
 
     // ===== 商品進階查詢：模糊搜尋 + 價格區間 + 排序 + 分頁 =====

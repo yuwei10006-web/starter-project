@@ -363,6 +363,7 @@ ApplicationContext 初始化 `SecurityConfig` 這個 bean 時，Spring 找不到
 用單價 2999.99 的商品下單、數量 2，呼叫 `POST /api/orders`，回傳 `totalPrice` 為 `5999.98`，計算正確，未被截斷。
 
 **對應 commit：**
+
 ```
 fix: OrderService 移除錯誤的 (int) 轉型，修正總金額計算截斷小數（對應 Code Review 中等 #總金額計算截斷小數）
 ```
@@ -382,7 +383,27 @@ fix: OrderService 移除錯誤的 (int) 轉型，修正總金額計算截斷小�
 用不存在的 id（`99999999`）呼叫 `PUT /api/products/99999999`，正確回傳 HTTP 404（`"status": 404, "error": "Not Found"`），不再是未處理例外導致的 500。回應 body 目前沒有帶出自訂訊息，是因為專案尚未加上全域例外處理器（Code Review 另一項待修問題），屬已知且待後續項目解決的範圍，不影響本項修正的正確性。
 
 **對應 commit：**
+
 ```
 fix: ProductService.updateProduct 改用 orElseThrow 回傳 404，避免 findById().get() 丟出語意不明的例外（對應 Code Review 中等 #.get()未處理找不到）
 ```
 
+## 19. 找不到資源仍回 200
+
+**嚴重度：🟡**
+**檔案位置：** `service/ProductService.java`，`getProduct()`
+
+**問題描述：**
+`getProduct()` 查不到商品時回傳 `null`，Controller 直接把回傳值序列化成 response body，Spring MVC 對 `null` 回傳值預設仍回 HTTP 200，body 為空。對呼叫方而言 200 代表成功查到資源，實際上卻什麼都沒查到，容易讓前端誤判狀態、漏掉錯誤處理。
+
+**修法：**
+比照上一項 `updateProduct()` 的作法，改用 `.orElseThrow(() -> notFound("商品不存在"))`，共用同一個 `notFound()` helper。`ProductController.get()` 不需要修改。
+
+**驗證：**
+用不存在的 id（`99999999`）呼叫 `GET /api/products/99999999`，正確回傳 HTTP 404（`"status": 404, "error": "Not Found"`），不再是查無資料卻回 200。
+
+**對應 commit：**
+
+```
+fix: ProductService.getProduct 找不到時改丟 404，不再靜默回傳 null（對應 Code Review 中等 #找不到資源仍回200）
+```
