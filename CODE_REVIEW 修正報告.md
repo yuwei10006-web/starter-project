@@ -331,3 +331,20 @@ ApplicationContext 初始化 `SecurityConfig` 這個 bean 時，Spring 找不到
 
 `fix: ProductController 刪除商品改用 DELETE method，避免違反 HTTP 語意（對應 Code Review 中等 #用GET做刪除）`
 
+## 16. Spring Security 預設隨機帳密未清除
+
+**嚴重度：🟡**
+**檔案位置：** `TradeApplication.java`
+
+**問題描述：**
+專案的驗證機制完全自行實作（JWT + `AuthService`），沒有用到 Spring Security 內建的 `UserDetailsService`。但因為沒有提供對應 bean，Spring Boot 會自動觸發 `UserDetailsServiceAutoConfiguration`，每次啟動印出一組沒人用的隨機帳密，屬於無意義的敏感雜訊。
+
+**修法：**
+`@SpringBootApplication` 加上 `exclude = UserDetailsServiceAutoConfiguration.class`。此類別在 Spring Boot 4 已從 `org.springframework.boot.autoconfigure.security.servlet` 搬到 `org.springframework.boot.security.autoconfigure`，需用新路徑 import。
+
+**驗證：**
+第一次重跑仍看到隨機密碼訊息，但編譯階段顯示「Nothing to compile」，代表跑的是修正前的舊 class；重新編譯後第二次執行，該訊息與對應的 `UserDetailsService` bean log 皆已消失，登入等既有功能未受影響。
+
+**對應 commit：**
+`fix: 排除 UserDetailsServiceAutoConfiguration，避免產生無用的隨機帳密雜訊（對應 Code Review 中等 #Spring Security預設隨機帳密未清除）`
+
