@@ -37,7 +37,7 @@ public class ProductService {
     }
 
     public Product updateProduct(Long id, ProductRequest request) {
-        Product p = productRepository.findById(id).get();
+        Product p = productRepository.findById(id).orElseThrow(() -> notFound("商品不存在"));
         p.setName(request.name());
         p.setPrice(request.price());
         p.setStock(request.stock());
@@ -165,5 +165,9 @@ public class ProductService {
 
     private static ResponseStatusException badRequest(String message) {
         return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+    }
+
+    private static ResponseStatusException notFound(String message) {
+        return new ResponseStatusException(HttpStatus.NOT_FOUND, message);
     }
 }

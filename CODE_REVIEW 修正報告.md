@@ -367,3 +367,22 @@ ApplicationContext 初始化 `SecurityConfig` 這個 bean 時，Spring 找不到
 fix: OrderService 移除錯誤的 (int) 轉型，修正總金額計算截斷小數（對應 Code Review 中等 #總金額計算截斷小數）
 ```
 
+## 18. `.get()` 未處理找不到
+
+**嚴重度：🟡**
+**檔案位置：** `service/ProductService.java`，`updateProduct()`
+
+**問題描述：**
+`Product p = productRepository.findById(id).get();` 直接對 `Optional` 呼叫 `.get()`，完全沒檢查是否存在。若 `id` 對應的商品不存在，會丟出語意不明的 `NoSuchElementException`，最終只會變成一個籠統的 500 錯誤，呼叫方無法分辨是「商品不存在」還是伺服器真的出錯。
+
+**修法：**
+改用 `.orElseThrow(...)` 丟出 `ResponseStatusException(HttpStatus.NOT_FOUND, ...)`，並比照同檔案既有的 `badRequest()` helper，新增一個對應的 `notFound()` helper，風格一致。
+
+**驗證：**
+用不存在的 id（`99999999`）呼叫 `PUT /api/products/99999999`，正確回傳 HTTP 404（`"status": 404, "error": "Not Found"`），不再是未處理例外導致的 500。回應 body 目前沒有帶出自訂訊息，是因為專案尚未加上全域例外處理器（Code Review 另一項待修問題），屬已知且待後續項目解決的範圍，不影響本項修正的正確性。
+
+**對應 commit：**
+```
+fix: ProductService.updateProduct 改用 orElseThrow 回傳 404，避免 findById().get() 丟出語意不明的例外（對應 Code Review 中等 #.get()未處理找不到）
+```
+
