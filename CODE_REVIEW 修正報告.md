@@ -348,3 +348,22 @@ ApplicationContext 初始化 `SecurityConfig` 這個 bean 時，Spring 找不到
 **對應 commit：**
 `fix: 排除 UserDetailsServiceAutoConfiguration，避免產生無用的隨機帳密雜訊（對應 Code Review 中等 #Spring Security預設隨機帳密未清除）`
 
+## 17. 總金額計算截斷小數
+
+**嚴重度：🟡**
+**檔案位置：** `service/OrderService.java`，`placeOrder()`
+
+**問題描述：**
+原本用 `(int) product.getPrice() * request.getQuantity()` 計算總金額，`product.getPrice()` 是 `double`，先被 `(int)` 截斷小數才相乘，例如單價 2999.99 會直接變 2999，長期下來金額會少算。
+
+**修法：**
+拿掉錯誤的 `(int)` 轉型，改成 `product.getPrice() * request.getQuantity()`，全程用 `double` 計算，`Order.totalPrice` 欄位型別不用改。
+
+**驗證：**
+用單價 2999.99 的商品下單、數量 2，呼叫 `POST /api/orders`，回傳 `totalPrice` 為 `5999.98`，計算正確，未被截斷。
+
+**對應 commit：**
+```
+fix: OrderService 移除錯誤的 (int) 轉型，修正總金額計算截斷小數（對應 Code Review 中等 #總金額計算截斷小數）
+```
+

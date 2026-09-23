@@ -64,7 +64,7 @@ public class OrderService {
         order.setUser(user);
         order.setProduct(product);
         order.setQuantity(request.getQuantity());
-        order.setTotalPrice((int) product.getPrice() * request.getQuantity());
+        order.setTotalPrice(product.getPrice() * request.getQuantity());
         return orderRepository.save(order);
     }
 
