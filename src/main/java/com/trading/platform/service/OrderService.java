@@ -11,8 +11,6 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
 
 @Service
@@ -21,9 +19,6 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
-
-    private final SimpleDateFormat orderNoFormat = new SimpleDateFormat("yyyyMMddHHmmssSSS");
-    private int placedOrderCount = 0;
 
     public OrderService(OrderRepository orderRepository, ProductRepository productRepository,
             UserRepository userRepository) {
@@ -56,9 +51,7 @@ public class OrderService {
             throw new RuntimeException("庫存異動衝突，請重新下單");
         }
 
-        String orderNo = orderNoFormat.format(new Date());
-        placedOrderCount++;
-        System.out.println("建立訂單 " + orderNo + "，本機累計 " + placedOrderCount + " 筆");
+        System.out.println("建立訂單成功，使用者: " + username + "，商品: " + product.getName() + "，數量: " + request.getQuantity());
 
         Order order = new Order();
         order.setUser(user);

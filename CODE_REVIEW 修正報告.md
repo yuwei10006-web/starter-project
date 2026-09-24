@@ -407,3 +407,26 @@ fix: ProductService.updateProduct 改用 orElseThrow 回傳 404，避免 findByI
 ```
 fix: ProductService.getProduct 找不到時改丟 404，不再靜默回傳 null（對應 Code Review 中等 #找不到資源仍回200）
 ```
+
+## 20. 死程式碼/共用非執行緒安全物件
+
+**嚴重度：🟡**
+**檔案位置：** `service/OrderService.java`，`placeOrder()`
+
+**問題描述：**
+`OrderService` 是 Spring singleton bean，`orderNoFormat`（`SimpleDateFormat`）與 `placedOrderCount` 是它的 instance field，被所有併發請求共用。`SimpleDateFormat` 內部用可變狀態做計算，並非執行緒安全，多個請求同時呼叫 `.format()` 可能互相干擾算出錯誤結果；`placedOrderCount++` 也不是原子操作，併發下會計數漏算。且算出來的 `orderNo` 只拿去 `println`，`Order` entity 完全沒有對應欄位可存，不影響任何實際業務行為，是死程式碼。
+
+**修法：**
+整段刪除 `orderNoFormat`、`placedOrderCount` 欄位，以及依賴它們的 `orderNo`/計數/println 三行，改成一行只用方法參數與區域變數（`username`、`product`、`request`）組成的 log：
+```java
+System.out.println("建立訂單成功，使用者: " + username + "，商品: " + product.getName() + "，數量: " + request.getQuantity());
+```
+沒有共用可變 instance field，天生執行緒安全，內容也比原本的訂單編號/本機計數器更有除錯價值。連帶移除不再使用的 `SimpleDateFormat`、`Date` import。
+
+**驗證：**
+下單成功（alice 購買機械鍵盤 x1），console 正確印出「建立訂單成功，使用者: alice，商品: 機械鍵盤，數量: 1」，順序落在庫存扣減 update 之後、訂單 insert 之前，與業務流程一致；API 回傳的訂單資料（金額、數量等）與修改前一致，證明只動了 log，未影響業務邏輯。
+
+**對應 commit：**
+```
+fix: OrderService 移除非執行緒安全的共用 SimpleDateFormat/計數器，改用天生安全的下單 log（對應 Code Review 中等 #死程式碼/共用非執行緒安全物件）
+```
