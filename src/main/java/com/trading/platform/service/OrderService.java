@@ -29,7 +29,8 @@ public class OrderService {
 
     @Transactional
     public Order placeOrder(String username, OrderRequest request) {
-        User user = userRepository.findByUsername(username).orElse(null);
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("使用者不存在"));
         Product product = productRepository.findById(request.getProductId()).orElse(null);
 
         if (product == null) {
@@ -67,7 +68,8 @@ public class OrderService {
     }
 
     public List<Order> getUserOrders(String username) {
-        User user = userRepository.findByUsername(username).orElse(null);
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("使用者不存在"));
         return orderRepository.findByUserId(user.getId());
     }
 }

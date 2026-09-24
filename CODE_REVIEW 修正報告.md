@@ -418,15 +418,39 @@ fix: ProductService.getProduct 找不到時改丟 404，不再靜默回傳 null�
 
 **修法：**
 整段刪除 `orderNoFormat`、`placedOrderCount` 欄位，以及依賴它們的 `orderNo`/計數/println 三行，改成一行只用方法參數與區域變數（`username`、`product`、`request`）組成的 log：
+
 ```java
 System.out.println("建立訂單成功，使用者: " + username + "，商品: " + product.getName() + "，數量: " + request.getQuantity());
 ```
+
 沒有共用可變 instance field，天生執行緒安全，內容也比原本的訂單編號/本機計數器更有除錯價值。連帶移除不再使用的 `SimpleDateFormat`、`Date` import。
 
 **驗證：**
 下單成功（alice 購買機械鍵盤 x1），console 正確印出「建立訂單成功，使用者: alice，商品: 機械鍵盤，數量: 1」，順序落在庫存扣減 update 之後、訂單 insert 之前，與業務流程一致；API 回傳的訂單資料（金額、數量等）與修改前一致，證明只動了 log，未影響業務邏輯。
 
 **對應 commit：**
+
 ```
 fix: OrderService 移除非執行緒安全的共用 SimpleDateFormat/計數器，改用天生安全的下單 log（對應 Code Review 中等 #死程式碼/共用非執行緒安全物件）
 ```
+
+## 21. user 完全沒 null check
+
+**嚴重度：🟡**
+**檔案位置：** `service/OrderService.java`，`placeOrder()`、`getUserOrders()`
+
+**問題描述：**
+`getUserOrders()` 用 `userRepository.findByUsername(username).orElse(null)` 取得使用者，找不到時直接 `null.getId()`，會噴 NPE。`placeOrder()` 同樣用 `orElse(null)`，但完全沒有像 `product` 那樣做 null 檢查，若 `user` 為 `null` 仍會繼續往下執行，最終把 `null` 存進 `order.setUser(user)`，在資料庫留下一筆沒有使用者的訂單——比直接噴錯更隱蔽、更危險的資料完整性問題。
+
+**修法：**
+兩處都改用 `.orElseThrow(() -> new RuntimeException("使用者不存在"))`。沒有改用 `ResponseStatusException`，是比照同一個 service 目前其他錯誤（例如「商品不存在」）統一丟 `RuntimeException` 的既有風格，範圍最小；正確的 HTTP 狀態碼轉換留給後續「全域例外處理」那項一併處理。
+
+**驗證：**
+僅做正常情境迴歸測試：用 alice 的有效 token 下單（機械鍵盤 x1，成功建立第 38 筆訂單）與查詢自己的訂單列表（正確回傳含新訂單在內的三筆紀錄），確認修改後兩個 API 行為與修改前一致。異常情境（token 有效但對應使用者已不存在）未實測重現，但程式碼邏輯上已消除原本的 NPE 路徑與「靜默寫入無使用者訂單」的髒資料路徑；完整、對外一致的異常錯誤格式，需搭配後續「沒有全域例外處理」那項一併完成。
+
+**對應 commit：**
+
+```
+fix: OrderService 對 user 查詢結果補上 null check，改用 orElseThrow 避免 NPE 與寫入髒資料（對應 Code Review 中等 #user完全沒null check）
+```
+
