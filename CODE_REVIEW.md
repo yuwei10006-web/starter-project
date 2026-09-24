@@ -75,9 +75,8 @@
 | `Long` 用 `==` 比較 | `OrderService.getUserOrders` | 超出 Long cache 範圍時比較結果不可靠，且此過濾本身是多餘的 |
 | 字串用 `==` 比較角色 | `AuthService.login`：`user.getRole() == "ADMIN"` | 能動全靠字串池巧合，非正確寫法 |
 | 死程式碼／共用非執行緒安全物件 | `OrderService`：`orderNoFormat` 算出的 `orderNo` | `Order` entity 沒有對應欄位可存，算完即丟；共用 `SimpleDateFormat` 併發下也不安全 |
-| `user` 完全沒 null check | `OrderService.placeOrder` / `getUserOrders` | `placeOrder` 存下沒有 owner 的訂單；`getUserOrders` 直接 NPE |
 | 靜默吞例外 | `AuthService.login`：`catch (Exception e) { // ignore }` | 把任何非預期例外都偽裝成「登入失敗」，掩蓋真正的系統錯誤（見 🔴 9） |
-| **springdoc-openapi 版本可能與 Spring Boot 4 不相容（待驗證）** | `pom.xml`：`springdoc.version = 2.8.8` | springdoc-openapi 2.x 系列是為 Spring Boot 3 設計，Boot 4 支援是從 3.0.0 開始。需要實際跑一次才能確認會不會影響啟動或 Swagger UI（見下方測試方式） |
+| **springdoc-openapi 版本可能與 Spring Boot 4 不相容（實際不影響但已升級來排除潛在風險）** | `pom.xml`：`springdoc.version = 2.8.8` | springdoc-openapi 2.x 系列是為 Spring Boot 3 設計，Boot 4 支援是從 3.0.0 開始。需要實際跑一次才能確認會不會影響啟動或 Swagger UI（見下方測試方式） |
 | Spring Security 預設產生隨機帳密未清除 | 啟動 log：`UserDetailsServiceAutoConfiguration` | 專案已用 JWT 做認證，但未明確停用/覆寫預設的 `InMemoryUserDetailsManager`，導致每次啟動都產生一組隨機密碼並印在 log。目前 `SecurityConfig` 未開啟 `httpBasic`/`formLogin`，此帳密尚無法被利用，但屬於自動配置未收尾，建議提供自訂 `UserDetailsService` 或明確排除該自動配置，避免日後有人誤開啟表單/Basic 認證後形成一個帳密已印在 log 裡的後門 |
 | 未登入請求回傳 403 而非 401 | config/SecurityConfig.java | SecurityFilterChain 未設定 formLogin/httpBasic，也未自訂 AuthenticationEntryPoint，導致 Spring Security 找不到「如何要求重新認證」的機制，fallback 使用 Http403ForbiddenEntryPoint，未帶 token 的請求會回 403 而非語意正確的 401。建議在 exceptionHandling() 中自訂 authenticationEntryPoint，對未認證請求明確回傳 401 |
 | `user` 完全沒 null check | `OrderService.placeOrder` / `getUserOrders` | `placeOrder` 透過登入後的 username 查詢 User，正常流程下通常能找到，但若資料庫中的 User 已被刪除或資料異常，`findByUsername(...).orElse(null)` 仍可能回傳 `null`；`placeOrder` 可能建立沒有有效 owner 的訂單，`getUserOrders` 則直接呼叫 `user.getId()` 導致 NPE。建議找不到 User 時明確拋出「使用者不存在」。 |
