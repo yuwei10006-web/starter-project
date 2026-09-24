@@ -63,8 +63,9 @@ public class OrderService {
     }
 
     private boolean validateOrder(OrderRequest request) {
-        // 驗證下單數量與商品是否合法
-        return true;
+        return request.getProductId() != null
+                && request.getQuantity() != null
+                && request.getQuantity() > 0;
     }
 
     public List<Order> getUserOrders(String username) {

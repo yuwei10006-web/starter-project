@@ -454,3 +454,30 @@ fix: OrderService 移除非執行緒安全的共用 SimpleDateFormat/計數器�
 fix: OrderService 對 user 查詢結果補上 null check，改用 orElseThrow 避免 NPE 與寫入髒資料（對應 Code Review 中等 #user完全沒null check）
 ```
 
+## 22. 下單驗證是空殼
+
+**嚴重度：🟡**
+**檔案位置：** `service/OrderService.java`，`validateOrder()`
+
+**問題描述：**
+`validateOrder()` 永遠回傳 `true`，註解寫的「驗證下單數量與商品是否合法」完全沒有實作。`OrderRequest.quantity` 可以是 `null`、`0`，甚至負數，原本的空殼驗證全部會放行，讓不合理的下單請求繼續往下扣庫存、建立訂單。
+
+**修法：**
+實作對得起這兩個欄位的基本驗證：`productId` 不可為 `null`，`quantity` 不可為 `null` 且必須大於 0。
+
+```java
+private boolean validateOrder(OrderRequest request) {
+    return request.getProductId() != null
+            && request.getQuantity() != null
+            && request.getQuantity() > 0;
+}
+```
+
+**驗證：**
+分別用 `quantity=0`、`quantity=-1`、`quantity=null`（未帶欄位）呼叫 `POST /api/orders`，三種都正確被擋下，回傳 500 +「訂單資料有誤」，不再被放行；用正常的 `{"productId": 1, "quantity": 1}` 下單，成功建立訂單（第 40 筆，4K 螢幕），確認合法訂單未受影響。
+
+**對應 commit：**
+
+```
+fix: OrderService.validateOrder 補上實際驗證邏輯，避免非法數量通過檢查（對應 Code Review 中等 #下單驗證是空殼）
+```
