@@ -523,3 +523,25 @@ fix: AuthController 登入改回傳一致的 JSON 格式，失敗改回 401（�
 ```
 feat: 新增全域例外處理器，統一錯誤回應格式並依語意對應正確狀態碼（對應 Code Review 中等 #沒有全域例外處理）
 ```
+
+## 25. springdoc-openapi 版本可能不相容
+
+**嚴重度：🟡**
+**檔案位置：** `pom.xml`
+
+**問題描述：**
+專案使用 Spring Boot 4.0.6，但 `springdoc.version` 鎖在 `2.8.8`。查證官方 FAQ 確認：springdoc-openapi 2.x 系列僅保證支援 Spring Boot 3.x，3.x 系列才是官方支援 Spring Boot 4 的版本，2.8.8 配 4.0.6 是規格上不受官方支援的組合。
+
+**修法：**
+`pom.xml` 的 `springdoc.version` 從 `2.8.8` 升級為 `3.1.1`（目前官方最新穩定版），其餘設定（artifactId、annotation package、`SecurityConfig` 放行的 swagger 路徑）皆不需異動。
+
+順手加了 `config/OpenApiConfig.java`，補上 Bearer JWT 的 security scheme 設定，讓 swagger-ui 出現「Authorize」按鈕，可以直接在網頁上貼 token 測試需要驗證的 API（原本專案完全沒有這塊設定，屬於額外的順手改善，不在 CODE_REVIEW 原始項目範圍內）。
+
+**驗證：**
+升級前實測 `http://localhost:8080/swagger-ui.html` 與 `/v3/api-docs`，兩者皆正常運作，所有 Controller 的 API 皆正確列出，並未實際重現錯誤——因此本項屬於排除潛在風險，而非修正已重現的 bug。升級後重新啟動，log 乾淨無任何 Error/Exception，`springdoc-openapi` 正常完成初始化（`Init duration for springdoc-openapi is: 908 ms`），功能與升級前一致。加上 `OpenApiConfig` 後，swagger-ui 出現 Authorize 按鈕，可正常貼 token 測試 API。
+
+**對應 commit：**
+
+```
+chore: 升級 springdoc-openapi 至官方支援 Spring Boot 4 的 3.1.1 版本，並補上 Bearer JWT 的 Swagger Authorize 設定（對應 Code Review 中等 #springdoc-openapi版本可能不相容）
+```
