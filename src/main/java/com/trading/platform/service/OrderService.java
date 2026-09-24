@@ -10,6 +10,9 @@ import com.trading.platform.repository.UserRepository;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.trading.platform.exception.BadRequestException;
+import com.trading.platform.exception.ConflictException;
+import com.trading.platform.exception.NotFoundException;
 
 import java.util.List;
 
@@ -30,26 +33,26 @@ public class OrderService {
     @Transactional
     public Order placeOrder(String username, OrderRequest request) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("使用者不存在"));
+                .orElseThrow(() -> new NotFoundException("使用者不存在"));
         Product product = productRepository.findById(request.getProductId()).orElse(null);
 
         if (product == null) {
-            throw new RuntimeException("商品不存在");
+            throw new NotFoundException("商品不存在");
         }
 
         if (!validateOrder(request)) {
-            throw new RuntimeException("訂單資料有誤");
+            throw new BadRequestException("訂單資料有誤");
         }
 
         if (product.getStock() < request.getQuantity()) {
-            throw new RuntimeException("庫存不足");
+            throw new ConflictException("庫存不足");
         }
 
         try {
             product.setStock(product.getStock() - request.getQuantity());
             productRepository.saveAndFlush(product);
         } catch (OptimisticLockingFailureException e) {
-            throw new RuntimeException("庫存異動衝突，請重新下單");
+            throw new ConflictException("庫存異動衝突，請重新下單");
         }
 
         System.out.println("建立訂單成功，使用者: " + username + "，商品: " + product.getName() + "，數量: " + request.getQuantity());
@@ -70,7 +73,7 @@ public class OrderService {
 
     public List<Order> getUserOrders(String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("使用者不存在"));
+                .orElseThrow(() -> new NotFoundException("使用者不存在"));
         return orderRepository.findByUserId(user.getId());
     }
 }

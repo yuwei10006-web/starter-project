@@ -501,3 +501,25 @@ fix: OrderService.validateOrder 補上實際驗證邏輯，避免非法數量通
 ```
 fix: AuthController 登入改回傳一致的 JSON 格式，失敗改回 401（對應 Code Review 中等 #登入回應格式不一致）
 ```
+
+## 24. 沒有全域例外處理
+
+**嚴重度：🟡**
+**檔案位置：** 全專案（新增 `exception/` 套件），涉及 `service/OrderService.java`
+
+**問題描述：**
+整個專案沒有任何 `@ControllerAdvice`/`@RestControllerAdvice`。錯誤處理分成兩種各自為政的寫法：`OrderService`、`AuthService` 丟籠統的 `RuntimeException`，完全沒有被攔截，最終變成 500，body 是 Spring Boot 預設格式，訊息被吃掉；`ProductService`、`AuthController` 丟 `ResponseStatusException`，狀態碼正確，但預設情況下訊息一樣不會出現在 body 裡。兩者都沒有統一的錯誤回應格式。
+
+**修法：**
+新增 `exception/ApiException`（帶 `HttpStatus` 的共同基底）及三個語意明確的子類別 `NotFoundException`(404)、`BadRequestException`(400)、`ConflictException`(409)；新增 `dto/ErrorResponse`（統一回應格式 `{"message": "..."}`）；新增 `exception/GlobalExceptionHandler`（`@RestControllerAdvice`），依序攔截 `ApiException`（用自帶狀態碼）、既有的 `ResponseStatusException`（沿用其狀態碼，涵蓋 `ProductService`/`AuthController` 既有的 404/401）、其他未分類的 `RuntimeException`（統一回 400 作安全網）、真正意外的 `Exception`（回 500，不暴露內部細節）。
+
+同時把 `OrderService` 裡原本的 4 種 `RuntimeException` 換成對應的語意類別：「商品不存在」「使用者不存在」→ `NotFoundException`(404)；「訂單資料有誤」→ `BadRequestException`(400)；「庫存不足」「庫存異動衝突」→ `ConflictException`(409)。
+
+**驗證：**
+下單 `quantity: 0` → 400 + `{"message": "訂單資料有誤"}`；下單不存在的 `productId` → 404 + `{"message": "商品不存在"}`；下單超過庫存 → 409 + `{"message": "庫存不足"}`；`PUT`/`GET /api/products/99999999` 維持 404，這次正確帶出 `{"message": "商品不存在"}`；登入密碼錯誤維持 401，正確帶出 `{"message": "登入失敗"}`；正常下單（4K 螢幕 x2，第 42 筆）、查詢自己訂單（正確列出全部 7 筆）皆正常成功，未受影響。另外針對 Spring Security 層級的迴歸做了確認：未帶 token 呼叫 API 仍回 401，帶已登入但角色不足的 token 呼叫需要 ADMIN 的 API 仍回 403，未被本次新增的例外處理攔截或覆蓋，證實兩套機制（Spring MVC 例外處理 vs. Security filter chain）互不影響。
+
+**對應 commit：**
+
+```
+feat: 新增全域例外處理器，統一錯誤回應格式並依語意對應正確狀態碼（對應 Code Review 中等 #沒有全域例外處理）
+```
