@@ -481,3 +481,23 @@ private boolean validateOrder(OrderRequest request) {
 ```
 fix: OrderService.validateOrder 補上實際驗證邏輯，避免非法數量通過檢查（對應 Code Review 中等 #下單驗證是空殼）
 ```
+
+## 23. 登入回應格式不一致
+
+**嚴重度：🟡**
+**檔案位置：** `controller/AuthController.java`
+
+**問題描述：**
+`login()` 成功時回傳裸字串（token 本身），失敗時同樣回傳裸字串（`"登入失敗"`），且 HTTP 狀態碼一律是 200。前端無法單純靠狀態碼判斷登入成敗，必須額外檢查 body 內容是否等於特定錯誤字串，格式不一致也很脆弱。
+
+**修法：**
+新增 `dto/LoginResponse.java`（`record LoginResponse(String token)`），成功時回傳這個 JSON 物件；失敗時改丟 `ResponseStatusException(HttpStatus.UNAUTHORIZED, "登入失敗")`，不再用 200 帶錯誤字串。
+
+**驗證：**
+用錯誤密碼登入，正確回傳 HTTP 401（不再是 200 帶錯誤字串）；用正確帳密登入，回傳一致的 JSON 格式 `{"token": "..."}`。拿一組有效 token 呼叫 `GET /api/orders` 做迴歸測試，正確回傳依 token 身分隔離的訂單資料，證明只是調整回應包裝方式，token 本身的簽發與驗證邏輯未受影響。
+
+**對應 commit：**
+
+```
+fix: AuthController 登入改回傳一致的 JSON 格式，失敗改回 401（對應 Code Review 中等 #登入回應格式不一致）
+```
