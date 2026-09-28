@@ -179,7 +179,9 @@ keyword 帶入惡意字串（例如包含單引號、UNION、OR 條件等）可�
 修正過程中的插曲：加上 `@Version` 後，直接以既有 `resources/data.sql`（純 SQL INSERT，繞過 JPA）建立的商品種子資料，`version` 欄位為 NULL，導致 Hibernate 在遞增版本號時對 null 值做運算，拋出 NullPointerException（並非邏輯錯誤，而是繞過 JPA 寫入的資料與 JPA 對 version 欄位的初始值假設不一致）。修正方式為在 `data.sql` 的三筆 INSERT 明確補上 version 欄位並給值 0，之後透過應用程式（走正常 JPA save 流程）新增的商品不受影響，因為 JPA 在 INSERT 時本就會自動賦予 version 初始值。
 
 **驗證：**
-先將測試商品（4K 螢幕，id=3）庫存重設為 1，以兩個獨立的 curl 請求（分別以 alice、admin 身分），透過 `.bat` 檔搭配 cmd 的 `start` 指令，在同一行指令中背靠背發出，模擬併發下單同一件僅剩 1 件庫存的商品。結果一個請求成功（回傳訂單 JSON），另一個請求後端 log 明確拋出 `RuntimeException: 庫存異動衝突，請重新下單`，直接指向 `OrderService.placeOrder` 中攔截 `OptimisticLockingFailureException` 的那行。查詢資料庫確認 stock 由 3 正確扣減為 2（僅扣一次，非負數），version 由 0 遞增為 1，orders 表中該商品僅有成功那筆訂單，失敗的請求未留下任何部分寫入的髒資料，確認樂觀鎖與交易邊界修正皆已正確生效。
+將測試商品（4K 螢幕，id=3）以兩個獨立的 curl 請求（分別以 alice、admin 身分），透過 `.bat` 檔搭配 cmd 的 `start` 指令，在同一行指令中背靠背發出，模擬併發下單同一件商品。結果一個請求成功（回傳訂單 JSON），另一個請求後端 log 明確拋出 `RuntimeException: 庫存異動衝突，請重新下單`，直接指向 `OrderService.placeOrder` 中攔截 `OptimisticLockingFailureException` 的那行。查詢資料庫確認 stock 由 3 正確扣減為 2（僅扣一次，非負數），version 由 0 遞增為 1，orders 表中該商品僅有成功那筆訂單，失敗的請求未留下任何部分寫入的髒資料，確認樂觀鎖與交易邊界修正皆已正確生效。
+
+**補充說明:** 修正文件中「併發下單超賣」（第 12 項）的驗證段落有一處描述不一致：文字寫「庫存重設為 1」，但該次實測數據為庫存 3 扣為 2，特此更正，該次測到的是「兩人同時改同一筆商品時，後改的會被擋下」。我已重新將庫存設為 1 再測試，兩個請求同時下單，一成一敗（失敗者回「庫存異動衝突，請重新下單」），庫存最終為 0、未出現負數。造成不便，還請見諒。
 
 目前僅以手動觸發兩個 curl 請求的方式模擬併發，樣本數為 1 組（2 個並行請求）。未來可考慮撰寫自動化併發測試，例如使用 JMeter、k6 或 Gatling 對同一商品發起數十至數百個並行請求，統計最終庫存是否精確等於「初始庫存 - 成功請求數」、失敗請求的錯誤率是否穩定，取代手動測試僅能驗證單次結果的限制，並納入 CI 流程中持續驗證。
 

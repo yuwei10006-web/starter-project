@@ -2,6 +2,9 @@
 
 商品交易平台後端服務。這是一份從前一位開發者手上接手的專案，已完成 Code Review、修正主要問題，並擴充商品進階查詢功能（詳見下方）。
 
+# GitHub Repository
+https://github.com/yuwei10006-web/starter-project
+
 ## 技術棧
 - Java 21 / Spring Boot 4.0
 - Spring Security + JWT
